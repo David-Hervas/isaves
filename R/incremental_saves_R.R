@@ -5,10 +5,11 @@
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
 #' @return A loaded workspace in the Gloval Environment
 #' @export
-load_incremental <- function(subset, metadata.file="ws_table.ref"){  #Avisar cuando hay objetos con el mismo nombre?
+load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FALSE){  #Avisar cuando hay objetos con el mismo nombre?
   metadata_complete <- ws_ref_table(metadata.file)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
+  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object]))
   load_files <- unique(metadata$file[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])])
   to_load <- paste(load_files, ".RData", sep="")
   lapply(to_load, load, envir = .GlobalEnv)
