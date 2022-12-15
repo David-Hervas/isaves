@@ -4,7 +4,7 @@
 \alias{load_incremental}
 \title{Load incremental}
 \usage{
-load_incremental(subset, metadata.file = "ws_table.ref")
+load_incremental(subset, metadata.file = "ws_table.ref", overwrite = FALSE)
 }
 \arguments{
 \item{subset}{A logical expression to select specific objects}

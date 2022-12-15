@@ -2,7 +2,7 @@
 % Please edit documentation in R/incremental_saves_R.R
 \name{ws_ref_table}
 \alias{ws_ref_table}
-\title{Work Space Reference table}
+\title{Work Space Reference Table}
 \usage{
 ws_ref_table(file = "ws_table.ref")
 }

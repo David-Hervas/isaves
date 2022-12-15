@@ -48,7 +48,7 @@ save_incremental <- function(file, metadata.file="ws_table.ref"){
   save(metadata, file=metadata.file)
 }
 
-#' Work Space Reference table
+#' Work Space Reference Table
 #'
 #' @description Visualize the work space reference table file on the project's folder
 #' @param file Name of the file in the folder containing the information about the saved workspaces
@@ -57,4 +57,30 @@ save_incremental <- function(file, metadata.file="ws_table.ref"){
 ws_ref_table <- function(file="ws_table.ref"){
   suppressWarnings(tryCatch(load(file), error=function(e) cat("No previous metadata")))
   if(exists("metadata")) metadata
+}
+
+
+#' Purge Work Space Reference Table
+#'
+#' @description Remove objects from the saved .RData files and update the Work Space Reference Table
+#' @param subset A logical expression to select specific objects
+#' @param file Name of the file in the folder containing the information about the saved workspaces
+#' @param remove If TRUE, objects are actually removed. If FALSE, a list of objects that would be removed is returned.
+#' @return .RData files are updated removing the selected objects and the Work Space Reference Table is updated.
+#' @export
+purge_ws_table <- function(subset, file="ws_table.ref", remove=FALSE){
+  metadata_complete <- ws_ref_table(file)
+  if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
+  metadata <- metadata_complete[f,]
+  if(remove){
+    lapply(unique(metadata$file), function(x){
+      e <- local({load(paste(x, ".RData", sep="")); environment()})
+      rm(list=metadata$object[metadata$file == x], envir = e)
+      save(list=objects(envir = e), file=paste(x, ".RData", sep=""))
+    })
+  }
+  metadata <- metadata_complete[!f,]
+  save(list="metadata", file=file)
+  cat("Purged objects: \n")
+  print(metadata_complete[f,])
 }
