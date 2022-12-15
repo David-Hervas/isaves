@@ -32,16 +32,16 @@ save_incremental <- function(file, metadata.file="ws_table.ref"){
   current_ws <- objects(envir = .GlobalEnv)
   old_metadata <- ws_ref_table(metadata.file)
   if(file %in% old_metadata$file) stop("Filename already exists. If you want to remove files or objects please use the purge_ws_table() function")
-  save(list=current_ws[!sapply(current_ws, function(x) digest::digest(get(x))) %in% old_metadata$hash], file=paste(file, ".RData", sep=""))
+  save(list=current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash], file=paste(file, ".RData", sep=""))
   metadata <- do.call(rbind,
-                      lapply(current_ws[!sapply(current_ws, function(x) digest::digest(get(x))) %in% old_metadata$hash],
-                             function(x){ data.frame(file=file,
-                                                     object=x,
-                                                     class=class(get(x))[1],
-                                                     size=as.numeric(object.size(get(x))),
+                      lapply(current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash],
+                             function(.x){ data.frame(file=file,
+                                                     object=.x,
+                                                     class=class(get(.x))[1],
+                                                     size=as.numeric(object.size(get(.x))),
                                                      date=Sys.time(),
-                                                     hash=digest::digest(get(x)),
-                                                     comment=ifelse(!is.null(comment(get(x))), comment(get(x)), NA))}))
+                                                     hash=digest::digest(get(.x)),
+                                                     comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA))}))
   if(file.exists(metadata.file)){
     metadata <- rbind(old_metadata, metadata)
   }
@@ -73,10 +73,10 @@ purge_ws_table <- function(subset, file="ws_table.ref", remove=FALSE){
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f,]
   if(remove){
-    lapply(unique(metadata$file), function(x){
-      e <- local({load(paste(x, ".RData", sep="")); environment()})
-      rm(list=metadata$object[metadata$file == x], envir = e)
-      save(list=objects(envir = e), file=paste(x, ".RData", sep=""))
+    lapply(unique(metadata$file), function(.x){
+      e <- local({load(paste(.x, ".RData", sep="")); environment()})
+      rm(list=metadata$object[metadata$file == .x], envir = e)
+      save(list=objects(envir = e), file=paste(.x, ".RData", sep=""))
     })
   }
   metadata <- metadata_complete[!f,]
