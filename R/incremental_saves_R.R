@@ -11,7 +11,7 @@ load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FAL
   metadata <- metadata_complete[f, ]
   if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object]))
   load_files <- unique(metadata$file[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])])
-  to_load <- paste(load_files, ".RData", sep="")
+  to_load <- paste(rev(load_files), ".RData", sep="")
   lapply(to_load, load, envir = .GlobalEnv)
   if(!all(metadata_complete$hash[metadata_complete$file %in% load_files] %in% metadata$hash)){
     to_remove <- metadata_complete$object[!metadata_complete$object %in% metadata$object]
