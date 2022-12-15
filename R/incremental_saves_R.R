@@ -29,6 +29,7 @@ load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FAL
 save_incremental <- function(file, metadata.file="ws_table.ref"){
   current_ws <- objects(envir = .GlobalEnv)
   old_metadata <- ws_ref_table(metadata.file)
+  if(file %in% old_metadata$file) stop("Filename already exists. If you want to remove files or objects please use the purge_ws_table() function")
   save(list=current_ws[!sapply(current_ws, function(x) digest::digest(get(x))) %in% old_metadata$hash], file=paste(file, ".RData", sep=""))
   metadata <- do.call(rbind,
                       lapply(current_ws[!sapply(current_ws, function(x) digest::digest(get(x))) %in% old_metadata$hash],
