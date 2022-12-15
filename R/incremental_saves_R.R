@@ -7,6 +7,7 @@
 #' @export
 load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FALSE){  #Avisar cuando hay objetos con el mismo nombre?
   metadata_complete <- ws_ref_table(metadata.file)
+  current_ws <- objects(envir = .GlobalEnv)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
   if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object]))
@@ -14,7 +15,8 @@ load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FAL
   to_load <- paste(rev(load_files), ".RData", sep="")
   lapply(to_load, load, envir = .GlobalEnv)
   if(!all(metadata_complete$hash[metadata_complete$file %in% load_files] %in% metadata$hash)){
-    to_remove <- metadata_complete$object[!metadata_complete$object %in% metadata$object]
+    to_remove <- metadata_complete$object[(!metadata_complete$object %in% metadata$object) &
+                                            !(metadata_complete$object %in% current_ws)]
     rm(list=to_remove, envir = .GlobalEnv)
   }
 }
