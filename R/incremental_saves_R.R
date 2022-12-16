@@ -32,20 +32,25 @@ save_incremental <- function(file, metadata.file="ws_table.ref"){
   current_ws <- objects(envir = .GlobalEnv)
   old_metadata <- ws_ref_table(metadata.file)
   if(file %in% old_metadata$file) stop("Filename already exists. If you want to remove files or objects please use the purge_ws_table() function")
-  save(list=current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash], file=paste(file, ".RData", sep=""))
-  metadata <- do.call(rbind,
-                      lapply(current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash],
-                             function(.x){ data.frame(file=file,
-                                                     object=.x,
-                                                     class=class(get(.x))[1],
-                                                     size=as.numeric(object.size(get(.x))),
-                                                     date=Sys.time(),
-                                                     hash=digest::digest(get(.x)),
-                                                     comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA))}))
-  if(file.exists(metadata.file)){
-    metadata <- rbind(old_metadata, metadata)
+  to_save <- current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash]
+  if(length(to_save) > 0){
+    save(list=to_save, file=paste(file, ".RData", sep=""))
+    metadata <- do.call(rbind,
+                        lapply(to_save,
+                               function(.x){ data.frame(file=file,
+                                                        object=.x,
+                                                        class=class(get(.x))[1],
+                                                        size=as.numeric(object.size(get(.x))),
+                                                        date=Sys.time(),
+                                                        hash=digest::digest(get(.x)),
+                                                        comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA))}))
+    if(file.exists(metadata.file)){
+      metadata <- rbind(old_metadata, metadata)
+    }
+    save(metadata, file=metadata.file)
+  } else{
+    cat("No new objects to store")
   }
-  save(metadata, file=metadata.file)
 }
 
 #' Work Space Reference Table
