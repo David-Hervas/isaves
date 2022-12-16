@@ -83,6 +83,9 @@ purge_ws_table <- function(subset, file="ws_table.ref", remove=FALSE){
       rm(list=metadata$object[metadata$file == .x], envir = e)
       save(list=objects(envir = e), file=paste(.x, ".RData", sep=""))
     })
+    if(any(!metadata_complete$file %in% metadata_complete$file[!f])){
+      file.remove(paste(unique(metadata_complete$file[!metadata_complete$file %in% metadata_complete$file[!f]]), ".RData", sep=""))
+    }
   }
   metadata <- metadata_complete[!f,]
   save(list="metadata", file=file)
