@@ -10,7 +10,7 @@ load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FAL
   current_ws <- objects(envir = .GlobalEnv)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
-  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", paste(objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object], sep=", ")))
+  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", paste(objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object], collapse=", ")))
   load_files <- unique(metadata$file[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])])
   to_load <- paste(rev(load_files), ".RData", sep="")
   lapply(to_load, load, envir = .GlobalEnv)
