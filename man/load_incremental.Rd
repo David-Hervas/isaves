@@ -12,7 +12,7 @@ load_incremental(subset, metadata.file = "ws_table.ref", overwrite = FALSE)
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 }
 \value{
-A loaded workspace in the Gloval Environment
+A loaded workspace in the Global Environment
 }
 \description{
 Load, potentially selecting specific objects, all the incremental saves in the project folder

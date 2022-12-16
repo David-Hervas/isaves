@@ -3,14 +3,14 @@
 #' @description Load, potentially selecting specific objects, all the incremental saves in the project folder
 #' @param subset A logical expression to select specific objects
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
-#' @return A loaded workspace in the Gloval Environment
+#' @return A loaded workspace in the Global Environment
 #' @export
 load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FALSE){  #Avisar cuando hay objetos con el mismo nombre?
   metadata_complete <- ws_ref_table(metadata.file)
   current_ws <- objects(envir = .GlobalEnv)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
-  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object]))
+  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", paste(objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object], sep=", ")))
   load_files <- unique(metadata$file[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])])
   to_load <- paste(rev(load_files), ".RData", sep="")
   lapply(to_load, load, envir = .GlobalEnv)
