@@ -3,6 +3,7 @@
 #' @description Load, potentially selecting specific objects, all the incremental saves in the project folder
 #' @param subset A logical expression to select specific objects
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
+#' @param overwrite Should objects already present in the .GlobalEnvironment be overwritten?
 #' @return A loaded workspace in the Global Environment
 #' @export
 load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FALSE){  #Avisar cuando hay objetos con el mismo nombre?
@@ -27,6 +28,7 @@ load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FAL
 #' @param file Name of the .RData file to store the saved workspace
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
 #' @return An incremental save of the workspace is stored in a file on the project's folder
+#' @importFrom utils object.size
 #' @export
 save_incremental <- function(file, metadata.file="ws_table.ref"){
   current_ws <- objects(envir = .GlobalEnv)
@@ -61,7 +63,7 @@ save_incremental <- function(file, metadata.file="ws_table.ref"){
 #' @export
 ws_ref_table <- function(file="ws_table.ref"){
   suppressWarnings(tryCatch(load(file), error=function(e) cat("No previous metadata")))
-  if(exists("metadata")) metadata
+  if(exists("metadata", inherits=FALSE)) metadata
 }
 
 

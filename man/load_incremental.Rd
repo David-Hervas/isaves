@@ -10,6 +10,8 @@ load_incremental(subset, metadata.file = "ws_table.ref", overwrite = FALSE)
 \item{subset}{A logical expression to select specific objects}
 
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
+
+\item{overwrite}{Should objects already present in the .GlobalEnvironment be overwritten?}
 }
 \value{
 A loaded workspace in the Global Environment
