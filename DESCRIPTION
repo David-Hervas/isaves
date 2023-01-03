@@ -3,7 +3,7 @@ Type: Package
 Title: Incremental Saves for the Workspace and Selective Load of Objects into the Workspace
 Version: 0.1.82
 Author: David Hervas
-Maintainer: David Hervas <ddhervasf@yahoo.es>
+Maintainer: David Hervas <ddhervas@yahoo.es>
 Imports: digest
 Description: The package includes functionallity for performing incremental saves 
   of the objects in the workspace and for (potentially) selective load of objects
