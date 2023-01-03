@@ -3,11 +3,13 @@
 #' @description Load, potentially selecting specific objects, all the incremental saves in the project folder
 #' @param subset A logical expression to select specific objects
 #' @param overwrite Should objects already present in the .GlobalEnvironment be overwritten?
+#' @param lazyload Should the objects be lazy loaded?
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
 #' @param rds.folder Name of the folder to store all the .rds files
+#' @param envir Environment where objects should be loaded
 #' @return A loaded workspace in the Global Environment
 #' @export
-load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds"){
+load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds", envir=.GlobalEnv){
   path <- paste("./", rds.folder, "/", sep="")
   metadata_complete <- ws_ref_table(metadata.file)
   current_ws <- objects(envir = .GlobalEnv)
@@ -23,9 +25,9 @@ load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.f
       object_name <- metadata$object[metadata$hash == x]
     }
     if(lazyload){
-      delayedAssign(object_name, readRDS(paste(path, x, ".rds", sep="")), assign.env = .GlobalEnv)
+      delayedAssign(object_name, readRDS(paste(path, x, ".rds", sep="")), assign.env = envir)
     } else{
-      assign(object_name, readRDS(paste(path, x, ".rds", sep="")), envir = .GlobalEnv)
+      assign(object_name, readRDS(paste(path, x, ".rds", sep="")), envir = envir)
     }
   }))
 }
@@ -33,11 +35,14 @@ load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.f
 #' Save incremental
 #'
 #' @description Save only the objects from the workspace that are not already stored in other .rds files in the project folder
+#' @param items Character vector with names of the objects to save (save everything by default)
+#' @param annotation Annotation for current save
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
-#' @return An incremental save of the workspace is stored in files on the project's folder
+#' @param rds.folder Name of the folder to store all the .rds files
+#' @return An incremental save of the workspace is stored in .rds files on the project's folder
 #' @importFrom utils object.size
 #' @export
-save_incremental <- function(items = objects(envir = .GlobalEnv), metadata.file="ws_table.ref", rds.folder="rds"){
+save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = NA, metadata.file="ws_table.ref", rds.folder="rds"){
   path <- paste("./", rds.folder, "/", sep="")
   if(!dir.exists(path)) dir.create(path)
   current_ws <- items
@@ -55,12 +60,13 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), metadata.file=
                                                         size=as.numeric(object.size(get(.x))),
                                                         date=Sys.time(),
                                                         hash=digest::digest(get(.x)),
-                                                        comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA))}))
+                                                        comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA),
+                                                        annotation=annotation)}))
 
     if(file.exists(metadata.file)){
       metadata <- rbind(old_metadata, metadata)
     }
-    save(metadata, file=metadata.file)
+    saveRDS(metadata, file=metadata.file)
   } else{
     cat("No new objects to store")
   }
@@ -73,7 +79,7 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), metadata.file=
 #' @return A data.frame with the information of the different objects in all the .RData files of the folder
 #' @export
 ws_ref_table <- function(file="ws_table.ref"){
-  suppressWarnings(tryCatch(load(file), error=function(e) cat("No previous metadata")))
+  metadata <- suppressWarnings(tryCatch(readRDS(file), error=function(e) cat("No previous metadata")))
   if(exists("metadata", inherits=FALSE)) metadata
 }
 

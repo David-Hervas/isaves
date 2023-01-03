@@ -4,13 +4,24 @@
 \alias{save_incremental}
 \title{Save incremental}
 \usage{
-save_incremental(metadata.file = "ws_table.ref", rds.folder = "rds")
+save_incremental(
+  items = objects(envir = .GlobalEnv),
+  annotation = NA,
+  metadata.file = "ws_table.ref",
+  rds.folder = "rds"
+)
 }
 \arguments{
+\item{items}{Character vector with names of the objects to save (save everything by default)}
+
+\item{annotation}{Annotation for current save}
+
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
+
+\item{rds.folder}{Name of the folder to store all the .rds files}
 }
 \value{
-An incremental save of the workspace is stored in files on the project's folder
+An incremental save of the workspace is stored in .rds files on the project's folder
 }
 \description{
 Save only the objects from the workspace that are not already stored in other .rds files in the project folder

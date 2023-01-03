@@ -9,7 +9,8 @@ load_incremental(
   overwrite = FALSE,
   lazyload = FALSE,
   metadata.file = "ws_table.ref",
-  rds.folder = "rds"
+  rds.folder = "rds",
+  envir = .GlobalEnv
 )
 }
 \arguments{
@@ -17,9 +18,13 @@ load_incremental(
 
 \item{overwrite}{Should objects already present in the .GlobalEnvironment be overwritten?}
 
+\item{lazyload}{Should the objects be lazy loaded?}
+
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 
 \item{rds.folder}{Name of the folder to store all the .rds files}
+
+\item{envir}{Environment where objects should be loaded}
 }
 \value{
 A loaded workspace in the Global Environment
