@@ -37,10 +37,10 @@ load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.f
 #' @return An incremental save of the workspace is stored in files on the project's folder
 #' @importFrom utils object.size
 #' @export
-save_incremental <- function(metadata.file="ws_table.ref", rds.folder="rds"){
+save_incremental <- function(items = objects(envir = .GlobalEnv), metadata.file="ws_table.ref", rds.folder="rds"){
   path <- paste("./", rds.folder, "/", sep="")
   if(!dir.exists(path)) dir.create(path)
-  current_ws <- objects(envir = .GlobalEnv)
+  current_ws <- items
   old_metadata <- ws_ref_table(metadata.file)
   to_save <- current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash]
   if(length(to_save) > 0){
