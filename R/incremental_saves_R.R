@@ -2,50 +2,61 @@
 #'
 #' @description Load, potentially selecting specific objects, all the incremental saves in the project folder
 #' @param subset A logical expression to select specific objects
-#' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
 #' @param overwrite Should objects already present in the .GlobalEnvironment be overwritten?
+#' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
+#' @param rds.folder Name of the folder to store all the .rds files
 #' @return A loaded workspace in the Global Environment
 #' @export
-load_incremental <- function(subset, metadata.file="ws_table.ref", overwrite=FALSE){  #Avisar cuando hay objetos con el mismo nombre?
+load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds"){
+  path <- paste("./", rds.folder, "/", sep="")
   metadata_complete <- ws_ref_table(metadata.file)
   current_ws <- objects(envir = .GlobalEnv)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
-  if(!overwrite & any(objects(envir = .GlobalEnv) %in% metadata$object)) stop(paste("Same object name in current Global Environment and .RData file:", paste(objects(envir = .GlobalEnv)[objects(envir = .GlobalEnv) %in% metadata$object], collapse=", ")))
-  load_files <- unique(metadata$file[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])])
-  to_load <- paste(rev(load_files), ".RData", sep="")
-  lapply(to_load, load, envir = .GlobalEnv)
-  if(!all(metadata_complete$hash[metadata_complete$file %in% load_files] %in% metadata$hash)){
-    to_remove <- metadata_complete$object[(!metadata_complete$object %in% metadata$object) &
-                                            !(metadata_complete$object %in% current_ws)]
-    rm(list=to_remove, envir = .GlobalEnv)
-  }
+  load_files <- rev(unique(metadata$hash[order(metadata$date, decreasing = TRUE)][!duplicated(metadata$object[order(metadata$date, decreasing = TRUE)])]))
+  invisible(lapply(load_files, function(x){
+    if(metadata$object[metadata$hash == x] %in% current_ws &&
+       !overwrite &&
+       x != digest::digest(get(current_ws[current_ws == metadata$object[metadata$hash == x]], envir=.GlobalEnv))){
+      object_name <- gsub(":|-", ".", gsub(" ", "_", paste(metadata$object[metadata$hash == x], "_", metadata$date[metadata$hash == x], sep="")))
+    } else{
+      object_name <- metadata$object[metadata$hash == x]
+    }
+    if(lazyload){
+      delayedAssign(object_name, readRDS(paste(path, x, ".rds", sep="")), assign.env = .GlobalEnv)
+    } else{
+      assign(object_name, readRDS(paste(path, x, ".rds", sep="")), envir = .GlobalEnv)
+    }
+  }))
 }
 
 #' Save incremental
 #'
-#' @description Save only the objects from the workspace that are not already stored in other .RData files in the project folder
-#' @param file Name of the .RData file to store the saved workspace
+#' @description Save only the objects from the workspace that are not already stored in other .rds files in the project folder
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
-#' @return An incremental save of the workspace is stored in a file on the project's folder
+#' @return An incremental save of the workspace is stored in files on the project's folder
 #' @importFrom utils object.size
 #' @export
-save_incremental <- function(file, metadata.file="ws_table.ref"){
+save_incremental <- function(metadata.file="ws_table.ref", rds.folder="rds"){
+  path <- paste("./", rds.folder, "/", sep="")
+  if(!dir.exists(path)) dir.create(path)
   current_ws <- objects(envir = .GlobalEnv)
   old_metadata <- ws_ref_table(metadata.file)
-  if(file %in% old_metadata$file) stop("Filename already exists. If you want to remove files or objects please use the purge_ws_table() function")
   to_save <- current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash]
   if(length(to_save) > 0){
-    save(list=to_save, file=paste(file, ".RData", sep=""))
+    lapply(to_save, function(.x){
+      saveRDS(get(.x), file=paste(path, digest::digest(get(.x)), ".rds", sep=""))
+    })
+
     metadata <- do.call(rbind,
                         lapply(to_save,
-                               function(.x){ data.frame(file=file,
-                                                        object=.x,
+                               function(.x){ data.frame(object=.x,
                                                         class=class(get(.x))[1],
                                                         size=as.numeric(object.size(get(.x))),
                                                         date=Sys.time(),
                                                         hash=digest::digest(get(.x)),
                                                         comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA))}))
+
     if(file.exists(metadata.file)){
       metadata <- rbind(old_metadata, metadata)
     }
@@ -71,26 +82,23 @@ ws_ref_table <- function(file="ws_table.ref"){
 #'
 #' @description Remove objects from the saved .RData files and update the Work Space Reference Table
 #' @param subset A logical expression to select specific objects
-#' @param file Name of the file in the folder containing the information about the saved workspaces
 #' @param remove If TRUE, objects are actually removed. If FALSE, a list of objects that would be removed is returned.
+#' @param file Name of the file in the folder containing the information about the saved workspaces
+#' @param rds.folder Name of the folder where .rds files are stored
 #' @return .RData files are updated removing the selected objects and the Work Space Reference Table is updated.
 #' @export
-purge_ws_table <- function(subset, file="ws_table.ref", remove=FALSE){
+purge_ws_table <- function(subset, remove=FALSE, file="ws_table.ref", rds.folder="rds"){
+  path <- paste("./", rds.folder, "/", sep="")
   metadata_complete <- ws_ref_table(file)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f,]
   if(remove){
-    lapply(unique(metadata$file), function(.x){
-      e <- local({load(paste(.x, ".RData", sep="")); environment()})
-      rm(list=metadata$object[metadata$file == .x], envir = e)
-      save(list=objects(envir = e), file=paste(.x, ".RData", sep=""))
+    lapply(metadata$hash, function(x){
+      file.remove(paste(path, x, ".rds", sep=""))
     })
-    if(any(!metadata_complete$file %in% metadata_complete$file[!f])){
-      file.remove(paste(unique(metadata_complete$file[!metadata_complete$file %in% metadata_complete$file[!f]]), ".RData", sep=""))
-    }
+    metadata <- metadata_complete[!f,]
+    save(list="metadata", file=file)
   }
-  metadata <- metadata_complete[!f,]
-  save(list="metadata", file=file)
   cat("Purged objects: \n")
   print(metadata_complete[f,])
 }

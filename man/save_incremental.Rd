@@ -4,16 +4,14 @@
 \alias{save_incremental}
 \title{Save incremental}
 \usage{
-save_incremental(file, metadata.file = "ws_table.ref")
+save_incremental(metadata.file = "ws_table.ref", rds.folder = "rds")
 }
 \arguments{
-\item{file}{Name of the .RData file to store the saved workspace}
-
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 }
 \value{
-An incremental save of the workspace is stored in a file on the project's folder
+An incremental save of the workspace is stored in files on the project's folder
 }
 \description{
-Save only the objects from the workspace that are not already stored in other .RData files in the project folder
+Save only the objects from the workspace that are not already stored in other .rds files in the project folder
 }

@@ -4,14 +4,21 @@
 \alias{purge_ws_table}
 \title{Purge Work Space Reference Table}
 \usage{
-purge_ws_table(subset, file = "ws_table.ref", remove = FALSE)
+purge_ws_table(
+  subset,
+  remove = FALSE,
+  file = "ws_table.ref",
+  rds.folder = "rds"
+)
 }
 \arguments{
 \item{subset}{A logical expression to select specific objects}
 
+\item{remove}{If TRUE, objects are actually removed. If FALSE, a list of objects that would be removed is returned.}
+
 \item{file}{Name of the file in the folder containing the information about the saved workspaces}
 
-\item{remove}{If TRUE, objects are actually removed. If FALSE, a list of objects that would be removed is returned.}
+\item{rds.folder}{Name of the folder where .rds files are stored}
 }
 \value{
 .RData files are updated removing the selected objects and the Work Space Reference Table is updated.

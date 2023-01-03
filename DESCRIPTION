@@ -1,7 +1,7 @@
 Package: isaves
 Type: Package
 Title: Incremental Saves for the Workspace and Selective Load of Objects into the Workspace
-Version: 0.1.67
+Version: 0.1.82
 Author: David Hervas
 Maintainer: David Hervas <ddhervasf@yahoo.es>
 Imports: digest
@@ -11,4 +11,4 @@ Description: The package includes functionallity for performing incremental save
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3

@@ -4,14 +4,22 @@
 \alias{load_incremental}
 \title{Load incremental}
 \usage{
-load_incremental(subset, metadata.file = "ws_table.ref", overwrite = FALSE)
+load_incremental(
+  subset,
+  overwrite = FALSE,
+  lazyload = FALSE,
+  metadata.file = "ws_table.ref",
+  rds.folder = "rds"
+)
 }
 \arguments{
 \item{subset}{A logical expression to select specific objects}
 
+\item{overwrite}{Should objects already present in the .GlobalEnvironment be overwritten?}
+
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 
-\item{overwrite}{Should objects already present in the .GlobalEnvironment be overwritten?}
+\item{rds.folder}{Name of the folder to store all the .rds files}
 }
 \value{
 A loaded workspace in the Global Environment
