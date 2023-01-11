@@ -103,7 +103,7 @@ purge_ws_table <- function(subset, remove=FALSE, file="ws_table.ref", rds.folder
       file.remove(paste(path, x, ".rds", sep=""))
     })
     metadata <- metadata_complete[!f,]
-    save(list="metadata", file=file)
+    saveRDS(metadata, file=file)
   }
   cat("Purged objects: \n")
   print(metadata_complete[f,])
