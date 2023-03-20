@@ -47,7 +47,8 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
   if(!dir.exists(path)) dir.create(path)
   current_ws <- items
   old_metadata <- ws_ref_table(metadata.file)
-  to_save <- current_ws[!sapply(current_ws, function(.x) digest::digest(get(.x))) %in% old_metadata$hash]
+  hashes <- sapply(current_ws, function(.x) digest::digest(get(.x)))
+  to_save <- current_ws[!hashes %in% old_metadata$hash & !duplicated(hashes)]
   if(length(to_save) > 0){
     lapply(to_save, function(.x){
       saveRDS(get(.x), file=paste(path, digest::digest(get(.x)), ".rds", sep=""))
