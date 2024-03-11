@@ -4,9 +4,11 @@
 \alias{ws_ref_table}
 \title{Work Space Reference Table}
 \usage{
-ws_ref_table(file = "ws_table.ref")
+ws_ref_table(subset, file = "ws_table.ref")
 }
 \arguments{
+\item{subset}{A logical expression to select specific objects}
+
 \item{file}{Name of the file in the folder containing the information about the saved workspaces}
 }
 \value{

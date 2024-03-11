@@ -62,6 +62,7 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
                                                         date=Sys.time(),
                                                         hash=digest::digest(get(.x)),
                                                         comment=ifelse(!is.null(comment(get(.x))), comment(get(.x)), NA),
+                                                        user=Sys.info()[["user"]],
                                                         annotation=annotation)}))
 
     if(file.exists(metadata.file)){
@@ -76,12 +77,16 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
 #' Work Space Reference Table
 #'
 #' @description Visualize the work space reference table file on the project's folder
+#' @param subset A logical expression to select specific objects
 #' @param file Name of the file in the folder containing the information about the saved workspaces
 #' @return A data.frame with the information of the different objects in all the .RData files of the folder
 #' @export
-ws_ref_table <- function(file="ws_table.ref"){
+ws_ref_table <- function(subset, file="ws_table.ref"){
   metadata <- suppressWarnings(tryCatch(readRDS(file), error=function(e) cat("No previous metadata")))
-  if(exists("metadata", inherits=FALSE)) metadata
+  if(exists("metadata", inherits=FALSE)){
+    if(missing(subset)) f <- rep(TRUE, nrow(metadata)) else f <- eval(substitute(subset), metadata, baseenv())
+    metadata[f, ]
+  }
 }
 
 
