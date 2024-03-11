@@ -83,7 +83,7 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
 #' @export
 ws_ref_table <- function(subset, file="ws_table.ref"){
   metadata <- suppressWarnings(tryCatch(readRDS(file), error=function(e) cat("No previous metadata")))
-  if(exists("metadata", inherits=FALSE)){
+  if(!is.null(metadata)){
     if(missing(subset)) f <- rep(TRUE, nrow(metadata)) else f <- eval(substitute(subset), metadata, baseenv())
     metadata[f, ]
   }
