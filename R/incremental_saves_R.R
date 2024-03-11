@@ -66,7 +66,10 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
                                                         annotation=annotation)}))
 
     if(file.exists(metadata.file)){
-      metadata <- rbind(old_metadata, metadata)
+      metadata <- rbind(
+        data.frame(c(old_metadata, sapply(setdiff(names(metadata), names(old_metadata)), function(x) NA))),
+        data.frame(c(metadata, sapply(setdiff(names(old_metadata), names(metadata)), function(x) NA)))
+      )
     }
     saveRDS(metadata, file=metadata.file)
   } else{
