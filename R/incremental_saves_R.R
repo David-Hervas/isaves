@@ -11,7 +11,7 @@
 #' @export
 load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds", envir=.GlobalEnv){
   path <- paste("./", rds.folder, "/", sep="")
-  metadata_complete <- ws_ref_table(metadata.file)
+  metadata_complete <- ws_ref_table(file=metadata.file)
   current_ws <- objects(envir = .GlobalEnv)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f, ]
@@ -46,7 +46,7 @@ save_incremental <- function(items = objects(envir = .GlobalEnv), annotation = N
   path <- paste("./", rds.folder, "/", sep="")
   if(!dir.exists(path)) dir.create(path)
   current_ws <- items
-  old_metadata <- ws_ref_table(metadata.file)
+  old_metadata <- ws_ref_table(file = metadata.file)
   hashes <- sapply(current_ws, function(.x) digest::digest(get(.x)))
   to_save <- current_ws[!hashes %in% old_metadata$hash & !duplicated(hashes)]
   if(length(to_save) > 0){
@@ -101,7 +101,7 @@ ws_ref_table <- function(subset, file="ws_table.ref"){
 #' @export
 purge_ws_table <- function(subset, remove=FALSE, file="ws_table.ref", rds.folder="rds"){
   path <- paste("./", rds.folder, "/", sep="")
-  metadata_complete <- ws_ref_table(file)
+  metadata_complete <- ws_ref_table(file=file)
   if(missing(subset)) f <- rep(TRUE, nrow(metadata_complete)) else f <- eval(substitute(subset), metadata_complete, baseenv())
   metadata <- metadata_complete[f,]
   if(remove){
