@@ -117,3 +117,26 @@ purge_ws_table <- function(subset, remove=FALSE, file="ws_table.ref", rds.folder
   cat("Purged objects: \n")
   print(metadata_complete[f,])
 }
+
+
+#' Annotate Work Space Reference Table
+#'
+#' @description Annotate lines in the Work Space Reference Table
+#' @param subset A logical expression to select specific objects
+#' @param annotation Character string with the annotation
+#' @param write If TRUE, annotations are actually written in the file. If FALSE, a filtered data.frame with the proposed annotations is returned.
+#' @param file Name of the file in the folder containing the information about the saved workspaces
+#' @param rds.folder Name of the folder where .rds files are stored
+#' @return The file is updated with the new annotated table.
+#' @export
+annotate_ws <- function(subset, annotation=NULL, write=FALSE, file="ws_table.ref", rds.folder="rds"){
+  metadata <- suppressWarnings(tryCatch(readRDS(file), error=function(e) cat("No previous metadata")))
+  if(!is.null(metadata)){
+    if(missing(subset)) f <- rep(TRUE, nrow(metadata)) else f <- eval(substitute(subset), metadata, baseenv())
+    metadata[f, "annotation"] <- annotation
+  }
+  print(metadata[f,])
+  if(write){
+    saveRDS(metadata, file=file)
+  }
+}
