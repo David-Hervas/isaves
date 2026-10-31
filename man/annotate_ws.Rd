@@ -4,28 +4,30 @@
 \alias{annotate_ws}
 \title{Annotate Work Space Reference Table}
 \usage{
-annotate_ws(
-  subset,
-  annotation = NULL,
-  write = FALSE,
-  file = "ws_table.ref",
-  rds.folder = "rds"
-)
+annotate_ws(subset, annotation, write = FALSE, file = "ws_table.ref")
 }
 \arguments{
-\item{subset}{A logical expression to select specific objects}
+\item{subset}{A logical expression to select specific objects. Rows where it evaluates to NA are not selected}
 
-\item{annotation}{Character string with the annotation}
+\item{annotation}{Character string with the annotation. Use NA to remove existing annotations}
 
-\item{write}{If TRUE, annotations are actually written in the file. If FALSE, a filtered data.frame with the proposed annotations is returned.}
+\item{write}{If TRUE, annotations are actually written in the file. If FALSE, nothing is changed.}
 
 \item{file}{Name of the file in the folder containing the information about the saved workspaces}
-
-\item{rds.folder}{Name of the folder where .rds files are stored}
 }
 \value{
-The file is updated with the new annotated table.
+A data.frame with the selected rows and the new annotation (invisibly if it was written)
 }
 \description{
 Annotate lines in the Work Space Reference Table
+}
+\examples{
+d <- tempfile()
+dir.create(d)
+old <- setwd(d)
+e <- new.env()
+e$x <- 1:10
+save_incremental(envir = e)
+annotate_ws(object == "x", "clean data", write = TRUE)
+setwd(old)
 }

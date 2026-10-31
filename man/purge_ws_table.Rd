@@ -12,17 +12,28 @@ purge_ws_table(
 )
 }
 \arguments{
-\item{subset}{A logical expression to select specific objects}
+\item{subset}{A logical expression to select specific objects. It is required when \code{remove} is TRUE; use \code{TRUE} to purge everything. Rows where it evaluates to NA are not selected}
 
-\item{remove}{If TRUE, objects are actually removed. If FALSE, a list of objects that would be removed is returned.}
+\item{remove}{If TRUE, objects are actually removed. If FALSE, nothing is changed.}
 
 \item{file}{Name of the file in the folder containing the information about the saved workspaces}
 
-\item{rds.folder}{Name of the folder where .rds files are stored}
+\item{rds.folder}{Name of the folder where the object files are stored}
 }
 \value{
-.RData files are updated removing the selected objects and the Work Space Reference Table is updated.
+A data.frame with the selected rows (invisibly if they were removed)
 }
 \description{
-Remove objects from the saved .RData files and update the Work Space Reference Table
+Remove object versions from the Work Space Reference Table and delete the files that no remaining version uses
+}
+\examples{
+d <- tempfile()
+dir.create(d)
+old <- setwd(d)
+e <- new.env()
+e$x <- 1:10
+save_incremental(envir = e)
+purge_ws_table(object == "x")
+purge_ws_table(object == "x", remove = TRUE)
+setwd(old)
 }

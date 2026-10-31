@@ -7,13 +7,36 @@
 ws_ref_table(subset, file = "ws_table.ref")
 }
 \arguments{
-\item{subset}{A logical expression to select specific objects}
+\item{subset}{A logical expression to select specific objects. It can use the columns of the table and variables of the calling environment. Rows where it evaluates to NA are not selected}
 
 \item{file}{Name of the file in the folder containing the information about the saved workspaces}
 }
 \value{
-A data.frame with the information of the different objects in all the .RData files of the folder
+A data.frame with one row per stored version of each object, or NULL if there is no table yet. Tables from older versions of the package may have additional columns, which are kept. The columns are:
+\describe{
+  \item{object}{Name of the object.}
+  \item{class}{First class of the object.}
+  \item{size}{Size of the object in memory, in bytes, as given by \code{\link[utils]{object.size}}. The file on disk is usually smaller.}
+  \item{date}{Date and time of the save that created the row.}
+  \item{hash}{Hash of the content of the object. Together with \code{format}, it gives the name of its file, so versions with the same content share a file.}
+  \item{comment}{Comment of the object (see \code{\link[base]{comment}}), with the lines separated by a line break, or NA if it has none.}
+  \item{user}{User who made the save.}
+  \item{annotation}{Annotation given to \code{\link{save_incremental}} or \code{\link{annotate_ws}}, or NA if it has none.}
+  \item{algo}{Algorithm used to calculate \code{hash}: "spookyhash", or "md5" for rows saved with versions of the package before 0.3.0. An unchanged object is recognized by hashing it with the algorithm of its latest row.}
+  \item{format}{Format of the file of the object: "qs2" or "rds". See the \code{format} argument of \code{\link{save_incremental}}.}
+  \item{save_id}{Number of the save that created the row, the same shown by \code{\link{ws_snapshots}}, or NA for rows saved with versions of the package before 0.3.0.}
+}
 }
 \description{
 Visualize the work space reference table file on the project's folder
+}
+\examples{
+d <- tempfile()
+dir.create(d)
+old <- setwd(d)
+e <- new.env()
+e$x <- 1:10
+save_incremental(envir = e)
+ws_ref_table(object == "x")
+setwd(old)
 }

@@ -10,25 +10,45 @@ load_incremental(
   lazyload = FALSE,
   metadata.file = "ws_table.ref",
   rds.folder = "rds",
-  envir = .GlobalEnv
+  envir = .GlobalEnv,
+  snapshot = NULL
 )
 }
 \arguments{
-\item{subset}{A logical expression to select specific objects}
+\item{subset}{A logical expression to select specific objects. It can use the columns of \code{\link{ws_ref_table}} and variables of the calling environment. Rows where it evaluates to NA are not selected}
 
-\item{overwrite}{Should objects already present in the .GlobalEnvironment be overwritten?}
+\item{overwrite}{Should objects already present in \code{envir} be overwritten? If FALSE, a different version is loaded with the date appended to its name}
 
 \item{lazyload}{Should the objects be lazy loaded?}
 
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 
-\item{rds.folder}{Name of the folder to store all the .rds files}
+\item{rds.folder}{Name of the folder to store all the object files}
 
 \item{envir}{Environment where objects should be loaded}
+
+\item{snapshot}{Snapshot to restore: the \code{save_id} or the annotation shown by \code{\link{ws_snapshots}}, or "latest". If NULL, the latest version of each object is used}
 }
 \value{
-A loaded workspace in the Global Environment
+Invisibly, a data.frame with the \code{object}, the \code{name} it has in \code{envir} and the \code{action} performed: "loaded", "lazy", "renamed" or "unchanged"
 }
 \description{
-Load, potentially selecting specific objects, all the incremental saves in the project folder
+Load, potentially selecting specific objects, the incremental saves in the project folder.
+All the files are checked and read before assigning anything, so a failed load does not leave the workspace half loaded.
+}
+\details{
+By default, the latest version of every object ever saved is loaded, even if it was later removed from the
+workspace. Use \code{snapshot} to restore the exact state of the workspace at the time of a given save.
+}
+\examples{
+d <- tempfile()
+dir.create(d)
+old <- setwd(d)
+e <- new.env()
+e$x <- 1:10
+save_incremental(envir = e)
+restored <- new.env()
+load_incremental(object == "x", envir = restored)
+restored$x
+setwd(old)
 }

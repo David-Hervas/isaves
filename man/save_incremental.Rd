@@ -5,24 +5,43 @@
 \title{Save incremental}
 \usage{
 save_incremental(
-  items = objects(envir = .GlobalEnv),
+  items = objects(envir = envir),
   annotation = NA,
   metadata.file = "ws_table.ref",
-  rds.folder = "rds"
+  rds.folder = "rds",
+  envir = .GlobalEnv,
+  format = getOption("isaves.format", "qs2")
 )
 }
 \arguments{
-\item{items}{Character vector with names of the objects to save (save everything by default)}
+\item{items}{Character vector with names of the objects to save (save everything by default). When given, the other objects of the latest snapshot are kept in the new one}
 
-\item{annotation}{Annotation for current save}
+\item{annotation}{Annotation for current save. It is stored in the new rows and in the snapshot, also when no object has changed}
 
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 
-\item{rds.folder}{Name of the folder to store all the .rds files}
+\item{rds.folder}{Name of the folder to store all the object files}
+
+\item{envir}{Environment containing the objects to save}
+
+\item{format}{Format of the object files: "qs2" (fast) or "rds" (does not need any package to be read)}
 }
 \value{
-An incremental save of the workspace is stored in .rds files on the project's folder
+Invisibly, a data.frame with the new rows of the Work Space Reference Table
 }
 \description{
-Save only the objects from the workspace that are not already stored in other .rds files in the project folder
+Save only the objects that are not already stored in the project folder, recording a snapshot of the workspace.
+Identical objects share a single file. Lazy-loaded objects that have not been used are not read from disk.
+}
+\examples{
+d <- tempfile()
+dir.create(d)
+old <- setwd(d)
+e <- new.env()
+e$x <- 1:10
+save_incremental(annotation = "first version", envir = e)
+e$x <- 1:20
+save_incremental(envir = e)
+ws_ref_table()
+setwd(old)
 }

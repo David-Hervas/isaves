@@ -2,7 +2,12 @@
 
 export(annotate_ws)
 export(load_incremental)
+export(prune_ws)
 export(purge_ws_table)
 export(save_incremental)
+export(verify_ws)
 export(ws_ref_table)
+export(ws_root)
+export(ws_snapshots)
+export(ws_status)
 importFrom(utils,object.size)
