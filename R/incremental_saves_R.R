@@ -24,7 +24,7 @@
 #' restored$x
 #' setwd(old)
 #' @export
-load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds", envir=.GlobalEnv, snapshot=NULL){
+load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.file="ws_table.ref", rds.folder="rds", envir=parent.frame(), snapshot=NULL){
   store <- resolve_store(metadata.file, rds.folder)
   state <- require_store(store)
   candidates <- state$table
@@ -118,7 +118,7 @@ check_items <- function(items, envir){
 #' ws_ref_table()
 #' setwd(old)
 #' @export
-save_incremental <- function(items = objects(envir = envir), annotation = NA, metadata.file="ws_table.ref", rds.folder="rds", envir = .GlobalEnv, format = getOption("isaves.format", "qs2")){
+save_incremental <- function(items = objects(envir = envir), annotation = NA, metadata.file="ws_table.ref", rds.folder="rds", envir = parent.frame(), format = getOption("isaves.format", "qs2")){
   partial <- !missing(items)
   format <- match.arg(format, c("qs2", "rds"))
   if(is.null(annotation)) annotation <- NA
@@ -339,7 +339,7 @@ annotate_ws <- function(subset, annotation, write=FALSE, file="ws_table.ref"){
 #' ws_status(envir = e)
 #' setwd(old)
 #' @export
-ws_status <- function(items = objects(envir = envir), metadata.file="ws_table.ref", rds.folder="rds", envir = .GlobalEnv){
+ws_status <- function(items = objects(envir = envir), metadata.file="ws_table.ref", rds.folder="rds", envir = parent.frame()){
   all_items <- missing(items)
   check_items(items, envir)
   store <- resolve_store(metadata.file, rds.folder)

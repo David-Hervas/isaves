@@ -8,7 +8,7 @@ ws_status(
   items = objects(envir = envir),
   metadata.file = "ws_table.ref",
   rds.folder = "rds",
-  envir = .GlobalEnv
+  envir = parent.frame()
 )
 }
 \arguments{

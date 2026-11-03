@@ -10,7 +10,7 @@ load_incremental(
   lazyload = FALSE,
   metadata.file = "ws_table.ref",
   rds.folder = "rds",
-  envir = .GlobalEnv,
+  envir = parent.frame(),
   snapshot = NULL
 )
 }

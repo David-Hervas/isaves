@@ -9,7 +9,7 @@ save_incremental(
   annotation = NA,
   metadata.file = "ws_table.ref",
   rds.folder = "rds",
-  envir = .GlobalEnv,
+  envir = parent.frame(),
   format = getOption("isaves.format", "qs2")
 )
 }
