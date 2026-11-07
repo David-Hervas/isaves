@@ -1,0 +1,231 @@
+---
+title: "Incremental saves with isaves"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Incremental saves with isaves}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`isaves` keeps a history of the objects in your workspace. Each call to `save_incremental()` writes only the objects that changed since the last save, and records a snapshot of the whole workspace. Later, `load_incremental()` can bring back everything, a few objects, an old version of an object or the workspace exactly as it was in a past save.
+
+This vignette walks through a small analysis to show the main functions.
+
+## Where the store lives
+
+Saves go to a *store*: a table with every version of every object (`ws_table.ref`) and a folder with one file per distinct content (`rds/`). By default, the store is placed at the root of the project, the nearest folder going up from the working directory that already has a store, an RStudio project or a git repository. `ws_root()` shows the folder in use.
+
+The option `isaves.root` fixes that folder. This vignette uses it to work in a temporary folder:
+
+```{r setup}
+library(isaves)
+options(isaves.root = file.path(tempdir(), "isaves-vignette"))
+```
+
+## Saving the workspace
+
+We start with some data and save it, with an annotation that describes the save:
+
+```{r}
+cars_data <- mtcars
+cars_data$am <- factor(cars_data$am, labels = c("automatic", "manual"))
+notes <- "Data from the 1974 Motor Trend US magazine"
+
+save_incremental(annotation = "raw data")
+```
+
+The analysis goes on: a variable is added to the data and a model is fitted. Before saving, `ws_status()` compares the workspace with the store, without writing anything:
+
+```{r}
+cars_data$kpl <- cars_data$mpg * 0.425
+coefs <- coef(lm(mpg ~ wt + am, data = cars_data))
+
+ws_status()
+```
+
+Only the new and modified objects are written. `notes` has not changed, so it is not stored again:
+
+```{r}
+save_incremental(annotation = "first model")
+```
+
+Saving when nothing has changed writes nothing and records no new snapshot:
+
+```{r}
+save_incremental()
+```
+
+Objects are stored by content, so an exact copy gets its own row in the table but shares the file of the original. Here we save a copy and then remove it from the workspace:
+
+```{r}
+backup <- cars_data
+save_incremental(annotation = "with backup")
+
+rm(backup)
+save_incremental(annotation = "without backup")
+
+length(list.files(file.path(ws_root(), "rds")))
+```
+
+The last save wrote no object, but it still recorded a snapshot, because the workspace changed. There are five object versions in the table, but only four files.
+
+## The reference table and the snapshots
+
+`ws_ref_table()` returns one row per stored version of each object. The help page of `ws_ref_table()` describes all the columns:
+
+```{r}
+ws_ref_table()[c("object", "class", "size", "save_id", "annotation")]
+```
+
+Like most functions in the package, it takes a `subset`, a logical expression that uses the columns of the table:
+
+```{r}
+ws_ref_table(object == "cars_data")[c("object", "date", "save_id")]
+```
+
+`ws_snapshots()` lists the saves, the objects present in the workspace at each one and how many of their versions are no longer stored:
+
+```{r}
+ws_snapshots()[c("save_id", "annotation", "n_objects", "n_missing")]
+```
+
+## Loading
+
+In a new R session you would just call `load_incremental()`, which loads into the calling environment. Here, new environments play the role of a fresh workspace, passed with `envir`.
+
+By default, the latest version of every object ever saved is loaded, including objects that were later removed from the workspace. A message tells which ones:
+
+```{r}
+session <- new.env()
+load_incremental(envir = session)
+ls(session)
+```
+
+`snapshot = "latest"` restores the workspace as it was in the last save instead:
+
+```{r}
+session <- new.env()
+load_incremental(snapshot = "latest", envir = session)
+ls(session)
+```
+
+### Selected objects and old versions
+
+`subset` selects what to load. When it matches several versions of an object, the latest one is loaded:
+
+```{r}
+selected <- new.env()
+load_incremental(object == "coefs", envir = selected)
+ls(selected)
+```
+
+The columns of the table can be used to pick an older version, for example the one created in the first save:
+
+```{r}
+load_incremental(object == "cars_data" & save_id == 1, envir = selected)
+names(selected$cars_data)
+```
+
+Loading never replaces an object that has different content. The stored version gets the date of its save appended to the name:
+
+```{r}
+load_incremental(object == "cars_data", envir = selected)
+ls(selected)
+```
+
+With `overwrite = TRUE`, the object is replaced. `load_incremental()` invisibly returns what it did with each object:
+
+```{r}
+result <- load_incremental(object == "cars_data", overwrite = TRUE, envir = selected)
+result
+```
+
+### Restoring a snapshot
+
+`snapshot` takes the `save_id` or the annotation of a save, and restores the workspace as it was then:
+
+```{r}
+raw <- new.env()
+load_incremental(snapshot = "raw data", envir = raw)
+ls(raw)
+names(raw$cars_data)
+```
+
+### Lazy loading
+
+With `lazyload = TRUE`, objects are read from disk only when they are first used. Unused lazy-loaded objects are not read by `ws_status()` or `save_incremental()` either, so a large workspace can be restored, checked and saved again quickly:
+
+```{r}
+lazy <- new.env()
+load_incremental(snapshot = "latest", lazyload = TRUE, envir = lazy)
+ws_status(envir = lazy)[c("object", "status")]
+lazy$coefs
+```
+
+## Maintaining the store
+
+### Annotations
+
+`annotate_ws()` changes the annotation of the selected rows. Without `write = TRUE`, it only shows the result:
+
+```{r}
+annotate_ws(object == "backup", "copy, not needed", write = TRUE)[c("object", "annotation")]
+```
+
+### Removing versions
+
+`purge_ws_table()` removes the selected versions, and `prune_ws()` keeps only the most recent versions of each object. Both are dry runs unless `remove = TRUE`:
+
+```{r}
+purge_ws_table(annotation == "copy, not needed")[c("object", "save_id")]
+purge_ws_table(annotation == "copy, not needed", remove = TRUE)[c("object", "save_id")]
+```
+
+A file is deleted only when no remaining version uses it. The copy shared its file with `cars_data`, so that file is kept.
+
+```{r}
+prune_ws(keep = 1)[c("object", "save_id")]
+prune_ws(keep = 1, remove = TRUE)
+ws_ref_table()[c("object", "save_id", "annotation")]
+```
+
+Removing versions leaves the snapshots that used them incomplete, as the `n_missing` column shows:
+
+```{r}
+ws_snapshots()[c("save_id", "annotation", "n_objects", "n_missing")]
+```
+
+### Checking the store
+
+`verify_ws()` checks that the table and the files agree. With `deep = TRUE`, every file is also read and its content checked against its hash. Here, it reports the incomplete snapshots left by the pruning:
+
+```{r}
+check <- verify_ws(deep = TRUE)
+check$incomplete_snapshots
+```
+
+## Files and options
+
+These are the files of the store. `ws_table.ref.bak` is the table before its last change, and can replace the table if it gets damaged:
+
+```{r}
+list.files(ws_root(), recursive = TRUE)
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `isaves.format` | `"qs2"` | Format of new files: `"qs2"` (fast) or `"rds"` (needs no package to be read) |
+| `isaves.nthreads` | up to 8 | Threads used for files larger than 1 MB |
+| `isaves.root` | not set | Fixed root folder of the store |
+| `isaves.lock.timeout` | `60000` | Milliseconds to wait while another R session updates the store |
+
+Several R sessions can save to the same store at the same time: updates of the table are locked.
+
+```{r cleanup, include = FALSE}
+unlink(ws_root(), recursive = TRUE)
+options(isaves.root = NULL)
+```

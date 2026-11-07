@@ -89,6 +89,24 @@ test_that("unknown snapshots give an error", {
   save_quiet(envir = e)
   expect_error(load_incremental(snapshot = 99, envir = e), "Snapshot not found")
   expect_error(load_incremental(snapshot = "nope", envir = e), "Snapshot not found")
+  expect_error(load_incremental(snapshot = c("nope", "nope"), envir = e), "single")
+  expect_error(load_incremental(snapshot = NA, envir = e), "single")
+})
+
+test_that("a snapshot uses the version that existed at that time when a value comes back", {
+  local_store()
+  e <- new.env()
+  e$x <- 1
+  save_quiet(envir = e, annotation = "one")
+  e$x <- 2
+  save_quiet(envir = e)
+  e$x <- 1
+  save_quiet(envir = e)
+  expect_equal(nrow(ws_ref_table(object == "x")), 3)
+  restored <- new.env()
+  result <- load_quiet(save_id == 1, envir = restored, snapshot = "one")
+  expect_equal(result$action, "loaded")
+  expect_equal(restored$x, 1)
 })
 
 test_that("snapshots report versions that are gone", {
@@ -204,6 +222,33 @@ test_that("lazy loading stays lazy through status, save and a second load", {
 
   expect_equal(lazy$big, 1:3)
   expect_false(rlang::env_binding_are_lazy(lazy, "big"))
+})
+
+test_that("loading without lazyload reads objects that are still lazy", {
+  local_store()
+  e <- new.env()
+  e$big <- 1:3
+  e$used <- "a"
+  save_quiet(envir = e)
+  lazy <- new.env()
+  load_quiet(envir = lazy, lazyload = TRUE)
+  force(lazy$used)
+  result <- load_quiet(envir = lazy)
+  expect_equal(result$action[result$object == "big"], "loaded")
+  expect_equal(result$action[result$object == "used"], "unchanged")
+  expect_false(rlang::env_binding_are_lazy(lazy, "big"))
+  expect_equal(lazy$big, 1:3)
+})
+
+test_that("a lazy object whose version was removed gives a clear error", {
+  local_store()
+  e <- new.env()
+  e$x <- 1:3
+  save_quiet(envir = e)
+  lazy <- new.env()
+  load_quiet(envir = lazy, lazyload = TRUE)
+  suppressMessages(purge_ws_table(TRUE, remove = TRUE))
+  expect_error(lazy$x, "is missing")
 })
 
 test_that("lazy loading stays lazy in the global environment", {

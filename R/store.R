@@ -75,9 +75,14 @@ atomic_write <- function(write_fun, file){
 
 # Object files -----------------------------------------------------------------
 
+# detectCores() can be NA. R CMD check --as-cran sets _R_CHECK_LIMIT_CORES_, and
+# CRAN does not allow more than two cores during checks.
 qs_threads <- function(size = Inf){
-  if(size < 1e6) return(1L)
-  getOption("isaves.nthreads", max(1L, min(8L, parallel::detectCores(), na.rm = TRUE)))
+  if(is.na(size) || size < 1e6) return(1L)
+  cores <- parallel::detectCores()
+  limit_cores <- tolower(Sys.getenv("_R_CHECK_LIMIT_CORES_"))
+  limit <- if(nzchar(limit_cores) && limit_cores != "false") 2L else 8L
+  getOption("isaves.nthreads", if(is.na(cores)) 1L else max(1L, min(limit, cores)))
 }
 
 write_object <- function(x, file, format, size = Inf){
@@ -86,7 +91,7 @@ write_object <- function(x, file, format, size = Inf){
       threads <- qs_threads(size)
       # Builds of qs2 without TBB only support one thread
       tryCatch(qs2::qs_save(x, tmp, nthreads = threads),
-               error = function(e) qs2::qs_save(x, tmp, nthreads = 1L))
+               error = function(e) if(threads > 1L) qs2::qs_save(x, tmp, nthreads = 1L) else stop(e))
     } else{
       saveRDS(x, file = tmp)
     }
@@ -94,10 +99,11 @@ write_object <- function(x, file, format, size = Inf){
 }
 
 read_object <- function(file, format){
+  if(!file.exists(file)) stop("The file ", file, " is missing: this version may have been removed from the store", call. = FALSE)
   if(format == "qs2"){
     threads <- qs_threads(file.size(file))
     tryCatch(qs2::qs_read(file, nthreads = threads),
-             error = function(e) qs2::qs_read(file, nthreads = 1L))
+             error = function(e) if(threads > 1L) qs2::qs_read(file, nthreads = 1L) else stop(e))
   } else{
     readRDS(file)
   }
@@ -157,8 +163,12 @@ empty_snapshots <- function(){
        manifest = data.frame(save_id = integer(0), object = character(0), hash = character(0)))
 }
 
+# New columns get the type they have in an empty table
 add_columns <- function(table, columns){
-  for(column in setdiff(columns, names(table))) table[[column]] <- rep(NA, nrow(table))
+  proto <- empty_table()
+  for(column in setdiff(columns, names(table))){
+    table[[column]] <- rep(if(column %in% names(proto)) proto[[column]][NA_integer_] else NA, nrow(table))
+  }
   table
 }
 
@@ -241,13 +251,16 @@ workspace_state <- function(items, envir, table){
       }
     }
   }
-  status <- ifelse(is.na(idx), "new", ifelse(hash == latest$hash[idx], "unchanged", "modified"))
+  status <- rep("new", length(items))
+  known <- !is.na(idx)
+  status[known] <- ifelse(hash[known] == latest$hash[idx[known]], "unchanged", "modified")
   data.frame(object = items, hash = hash, algo = algo, lazy = lazy, status = status, stringsAsFactors = FALSE)
 }
 
 # Snapshots ---------------------------------------------------------------------
 
 resolve_snapshot <- function(snapshot, snapshots){
+  if(length(snapshot) != 1L || is.na(snapshot)) stop("snapshot must be a single save_id or annotation", call. = FALSE)
   index <- snapshots$index
   if(nrow(index) == 0) stop("This store has no snapshots yet", call. = FALSE)
   id <- if(is.numeric(snapshot)){
@@ -264,12 +277,24 @@ resolve_snapshot <- function(snapshot, snapshots){
 
 snapshot_rows <- function(table, snapshots, id){
   manifest <- snapshots$manifest[snapshots$manifest$save_id == id, , drop = FALSE]
-  ord <- order(table$date, seq_len(nrow(table)), decreasing = TRUE)
+  # An object that goes back to a previous value stores that version again in a
+  # later save. The row that already existed at the time of the snapshot is preferred.
+  ord <- order(is.na(table$save_id) | table$save_id <= id, table$date, seq_len(nrow(table)), decreasing = TRUE)
   keys <- paste(table$object[ord], table$hash[ord])
   idx <- match(paste(manifest$object, manifest$hash), keys)
   if(anyNA(idx)) warning("Snapshot ", id, " is incomplete, these versions are no longer stored: ",
                          paste(manifest$object[is.na(idx)], collapse = ", "), call. = FALSE)
   table[ord[idx[!is.na(idx)]], , drop = FALSE]
+}
+
+# The snapshot index with the number of objects of each snapshot and how many of their versions are no longer stored
+snapshot_summary <- function(state){
+  index <- state$snapshots$index
+  manifest <- state$snapshots$manifest
+  stored <- paste(manifest$object, manifest$hash) %in% paste(state$table$object, state$table$hash)
+  index$n_objects <- tabulate(match(manifest$save_id, index$save_id), nrow(index))
+  index$n_missing <- tabulate(match(manifest$save_id[!stored], index$save_id), nrow(index))
+  index
 }
 
 # Removal ------------------------------------------------------------------------

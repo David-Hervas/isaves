@@ -1,3 +1,20 @@
+# isaves 0.3.1
+
+* `load_incremental()`, `save_incremental()` and `ws_status()` use the calling environment by default (`envir = parent.frame()`) instead of the global environment. At the console this is the same.
+* New vignette, `vignette("isaves")`.
+
+## Bug fixes
+
+* Restoring a snapshot of an object that later went back to the same value used the metadata of the later save, so `subset` and the name given to a renamed copy referred to the wrong save.
+* `load_incremental(lazyload = FALSE)` left objects that were lazy-loaded and still unused as promises. They are now read into memory.
+* A save could leave out an object that another R session purged or changed between the comparison of the workspace and the update of the table.
+* `verify_ws(remove.orphans = TRUE)` now decides which files are orphans while the store is locked, and removed orphans no longer count as a problem.
+* Using a lazy-loaded object whose file was removed gives a clear error.
+* `items` must be a character vector of names, and repeated names are saved and shown once. `snapshot` must be a single value.
+* `ws_status()` of an empty environment returns the usual column types, and columns added to tables of old versions have their usual types.
+* Files larger than 1 MB use at most 2 threads when R CMD check limits the cores, and 1 thread if the number of cores is unknown.
+* `digest (>= 0.6.25)` is required.
+
 # isaves 0.3.0
 
 Stores created by previous versions keep working and do not need to be migrated: their rows and `.rds` files are still read, and only new versions use the new hash and format.

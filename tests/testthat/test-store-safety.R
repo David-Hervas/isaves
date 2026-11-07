@@ -117,6 +117,30 @@ test_that("verify_ws detects problems and removes orphans", {
   expect_true(file.exists(file.path("rds", "notes.txt")))
 })
 
+test_that("removed orphans do not count as a problem", {
+  local_store()
+  e <- new.env()
+  e$a <- 1
+  save_quiet(envir = e)
+  orphan <- file.path("rds", paste0(strrep("ab", 16), ".qs2"))
+  file.create(orphan)
+  expect_false(suppressMessages(verify_ws())$ok)
+  expect_message(report <- verify_ws(remove.orphans = TRUE), "consistent")
+  expect_true(report$ok)
+  expect_equal(report$orphans, basename(orphan))
+  expect_false(file.exists(orphan))
+})
+
+test_that("the number of threads is limited", {
+  withr::local_options(isaves.nthreads = NULL)
+  expect_equal(isaves:::qs_threads(NA), 1L)
+  expect_equal(isaves:::qs_threads(10), 1L)
+  withr::local_envvar(`_R_CHECK_LIMIT_CORES_` = "TRUE")
+  expect_lte(isaves:::qs_threads(), 2L)
+  withr::local_options(isaves.nthreads = 3L)
+  expect_equal(isaves:::qs_threads(), 3L)
+})
+
 test_that("verify_ws detects a corrupt file with a changed hash", {
   local_store()
   e <- new.env()
@@ -183,6 +207,15 @@ test_that("old tables with factors or without recent columns are read", {
   result <- ws_ref_table()
   expect_type(result$object, "character")
   expect_equal(result$custom, c("kept", NA))
+})
+
+test_that("columns added to old tables have their usual types", {
+  local_store()
+  legacy_store(list(a = 1))
+  table <- ws_ref_table()
+  expect_type(table$save_id, "integer")
+  expect_type(table$user, "character")
+  expect_type(table$algo, "character")
 })
 
 test_that("a store created with only rows and no snapshots supports snapshots from then on", {

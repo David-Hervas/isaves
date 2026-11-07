@@ -19,7 +19,7 @@ load_incremental(
 
 \item{overwrite}{Should objects already present in \code{envir} be overwritten? If FALSE, a different version is loaded with the date appended to its name}
 
-\item{lazyload}{Should the objects be lazy loaded?}
+\item{lazyload}{Should the objects be lazy loaded? If FALSE, objects of \code{envir} that were lazy loaded and not used yet are read into memory}
 
 \item{metadata.file}{Name of the file in the folder containing the information about the saved workspaces}
 

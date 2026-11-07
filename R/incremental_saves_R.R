@@ -6,7 +6,7 @@
 #' workspace. Use \code{snapshot} to restore the exact state of the workspace at the time of a given save.
 #' @param subset A logical expression to select specific objects. It can use the columns of \code{\link{ws_ref_table}} and variables of the calling environment. Rows where it evaluates to NA are not selected
 #' @param overwrite Should objects already present in \code{envir} be overwritten? If FALSE, a different version is loaded with the date appended to its name
-#' @param lazyload Should the objects be lazy loaded?
+#' @param lazyload Should the objects be lazy loaded? If FALSE, objects of \code{envir} that were lazy loaded and not used yet are read into memory
 #' @param metadata.file Name of the file in the folder containing the information about the saved workspaces
 #' @param rds.folder Name of the folder to store all the object files
 #' @param envir Environment where objects should be loaded
@@ -49,6 +49,7 @@ load_incremental <- function(subset, overwrite=FALSE, lazyload=FALSE, metadata.f
       action[i] <- if(same_version(name[i], metadata$hash[i], metadata$algo[i], envir, reader)) "unchanged" else "renamed"
       if(action[i] == "renamed") name[i] <- free_name(name[i], envir)
     }
+    if(action[i] == "unchanged" && !lazyload && !is.null(pending_lazy(name[i], envir, reader))) action[i] <- "loaded"
   }
 
   to_load <- which(action != "unchanged")
@@ -89,9 +90,15 @@ free_name <- function(name, envir){
   candidate
 }
 
+# Returns the items without repetitions
 check_items <- function(items, envir){
+  if(!is.character(items) || anyNA(items) || !all(nzchar(items))){
+    stop("items must be a character vector with the names of the objects (to use the objects of an environment, give it as envir)", call. = FALSE)
+  }
+  items <- unique(items)
   unknown <- items[!vapply(items, exists, TRUE, envir = envir, inherits = FALSE)]
   if(length(unknown) > 0) stop("Objects not found: ", paste(unknown, collapse = ", "), call. = FALSE)
+  items
 }
 
 #' Save incremental
@@ -123,7 +130,7 @@ save_incremental <- function(items = objects(envir = envir), annotation = NA, me
   format <- match.arg(format, c("qs2", "rds"))
   if(is.null(annotation)) annotation <- NA
   if(length(annotation) != 1L) stop("annotation must be a single value", call. = FALSE)
-  check_items(items, envir)
+  items <- check_items(items, envir)
 
   store <- resolve_store(metadata.file, rds.folder)
   dir.create(store$rds, recursive = TRUE, showWarnings = FALSE)
@@ -139,8 +146,17 @@ save_incremental <- function(items = objects(envir = envir), annotation = NA, me
   # Hashing and writing can be slow, so only the update of the table is locked
   new_rows <- with_store_lock(store, {
     state <- read_store(store)
+    # Another session may have saved or removed versions since the workspace was compared,
+    # so objects that were unchanged then may need a new row now
     current <- latest_rows(state$table)
-    pending <- is.na(match(to_save$object, current$object)) | to_save$hash != current$hash[match(to_save$object, current$object)]
+    pos <- match(ws$object, current$object)
+    changed <- is.na(pos) | ws$hash != current$hash[pos]
+    late <- changed & !ws$object %in% to_save$object
+    if(any(late)){
+      to_save <- rbind(to_save, ws[late, , drop = FALSE])
+      details <- rbind(details, object_details(ws[late, , drop = FALSE], envir, state$table, format))
+    }
+    pending <- changed[match(to_save$object, ws$object)]
     write_missing_objects(store, to_save[pending, , drop = FALSE], details[pending, , drop = FALSE], envir)
     save_id <- max(0L, state$snapshots$index$save_id, state$table$save_id, na.rm = TRUE) + 1L
     date <- Sys.time()
@@ -341,7 +357,7 @@ annotate_ws <- function(subset, annotation, write=FALSE, file="ws_table.ref"){
 #' @export
 ws_status <- function(items = objects(envir = envir), metadata.file="ws_table.ref", rds.folder="rds", envir = parent.frame()){
   all_items <- missing(items)
-  check_items(items, envir)
+  items <- check_items(items, envir)
   store <- resolve_store(metadata.file, rds.folder)
   table <- read_store(store)$table
   ws <- workspace_state(items, envir, table)
@@ -381,12 +397,7 @@ ws_status <- function(items = objects(envir = envir), metadata.file="ws_table.re
 #' @export
 ws_snapshots <- function(subset, file="ws_table.ref"){
   store <- resolve_store(file, "rds")
-  state <- read_store(store)
-  index <- state$snapshots$index
-  manifest <- state$snapshots$manifest
-  stored <- paste(manifest$object, manifest$hash) %in% paste(state$table$object, state$table$hash)
-  index$n_objects <- tabulate(match(manifest$save_id, index$save_id), nrow(index))
-  index$n_missing <- tabulate(match(manifest$save_id[!stored], index$save_id), nrow(index))
+  index <- snapshot_summary(read_store(store))
   index[select_rows(if(missing(subset)) TRUE else substitute(subset), index, parent.frame()), , drop = FALSE]
 }
 
@@ -471,15 +482,23 @@ verify_ws <- function(deep=FALSE, remove.orphans=FALSE, file="ws_table.ref", rds
     }, TRUE)
     corrupt <- files %in% files[distinct[bad]]
   }
-  snapshots <- ws_snapshots(file = file)
+  snapshots <- snapshot_summary(state)
   incomplete <- snapshots$save_id[snapshots$n_missing > 0]
+  remaining <- orphans
   if(remove.orphans && length(orphans) > 0){
-    with_store_lock(store, unlink(file.path(store$rds, orphans)))
+    # Another session may have recorded some of these files while they were checked
+    orphans <- with_store_lock(store, {
+      current <- read_store(store)$table
+      orphans <- setdiff(orphans, basename(store_file(store, current$hash, current$format)))
+      unlink(file.path(store$rds, orphans))
+      orphans
+    })
+    remaining <- character(0)
     message("Deleted ", length(orphans), " orphan file(s)")
   }
-  ok <- !any(absent) && !any(corrupt) && length(orphans) == 0 && length(incomplete) == 0
+  ok <- !any(absent) && !any(corrupt) && length(remaining) == 0 && length(incomplete) == 0
   message(if(ok) "The store is consistent" else sprintf("Problems found: %d row(s) with missing file, %d with corrupt file, %d orphan file(s), %d incomplete snapshot(s)",
-                                                        sum(absent), sum(corrupt), length(orphans), length(incomplete)))
+                                                        sum(absent), sum(corrupt), length(remaining), length(incomplete)))
   invisible(list(ok = ok, missing = table[absent, , drop = FALSE], corrupt = table[corrupt, , drop = FALSE],
                  orphans = orphans, incomplete_snapshots = incomplete))
 }

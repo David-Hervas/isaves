@@ -79,6 +79,53 @@ test_that("save_incremental validates its arguments", {
   expect_error(save_incremental(format = "csv", envir = e))
   save_quiet(annotation = NULL, envir = e)
   expect_true(is.na(ws_ref_table()$annotation))
+  # An environment given as the first argument
+  expect_error(save_incremental(e), "character vector")
+  expect_error(save_incremental(items = NA_character_, envir = e), "character vector")
+  expect_error(ws_status(e), "character vector")
+})
+
+test_that("repeated items are saved and shown once", {
+  local_store()
+  e <- new.env()
+  e$a <- 1
+  save_quiet(items = c("a", "a"), envir = e)
+  expect_equal(nrow(ws_ref_table()), 1)
+  expect_equal(ws_snapshots()$n_objects, 1)
+  e$a <- 2
+  status <- ws_status(items = c("a", "a"), envir = e)
+  expect_equal(status$object, "a")
+  expect_equal(status$status, "modified")
+})
+
+test_that("ws_status of an empty environment has the usual column types", {
+  local_store()
+  status <- ws_status(envir = new.env())
+  expect_equal(nrow(status), 0)
+  expect_type(status$status, "character")
+})
+
+test_that("a save records objects that another session removed while it was not locked", {
+  local_store()
+  e <- new.env()
+  e$x <- "first"
+  e$y <- 1
+  save_quiet(envir = e)
+  e$y <- 2
+  lock <- isaves:::with_store_lock
+  with_mocked_bindings(
+    save_quiet(envir = e),
+    with_store_lock = function(store, code){
+      # The other session purges x after this one compared the workspace
+      state <- isaves:::read_store(store)
+      isaves:::remove_rows(store, state, state$table$object == "x")
+      lock(store, code)
+    })
+  expect_equal(ws_ref_table(object == "x")$save_id, 2)
+  restored <- new.env()
+  load_quiet(envir = restored, snapshot = "latest")
+  expect_equal(restored$x, "first")
+  expect_true(suppressMessages(verify_ws(deep = TRUE))$ok)
 })
 
 test_that("local variables can be saved with envir", {
